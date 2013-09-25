@@ -106,6 +106,10 @@ struct task_control_block {
     struct task_control_block  *next;
 };
 
+struct command_history {
+   char command_history1[100];
+   char command_history2[100];
+};
 /********************************************************/
 struct task_control_block tasks[TASK_LIMIT];
 size_t task_count = 0;
@@ -393,7 +397,12 @@ void shell()
 	int curr_char=0;
 	int curr_ins=0;
 	int init = 0;
-	
+	int history_count =1;
+	struct command_history history;
+	int a=0;
+	int b=0;
+	int a1=0;
+	int b1=0;	
 
 	while(1){	
 		switch (init){
@@ -411,7 +420,8 @@ void shell()
 			curr_ins--;
 		}	
 		else{	
-			if((ch==127)&&(curr_ins <= 0)) {//||((ch=='^[[A')||(ch=='^[[B')){  //fix <backspace> but <up> <down> still fault
+			//fix <backspace> but <up> <down> still fault
+			if((ch==127)&&(curr_ins <= 0)){  
 					str[curr_char++] = '\0';
 			}
 			else {
@@ -429,8 +439,40 @@ void shell()
 		}
 			printf(str);
 
-			if(ch=='\r'){//help HELP
+			if(ch=='\r'){
+				history_count++;
+				if(history_count%2 == 0){
+					for(a1;a1<100;a1++)
+					history.command_history1 [a1] = 0;
+					for(a;a<curr_ins;a++)
+					history.command_history1[a] = ins[a];
+				}
+				else{
+					for(b1;b1<100;b1++)
+					history.command_history2[b1] = 0;
+					for(b;b<curr_ins;b++)
+					history.command_history2[b] = ins[b];
+				}
+				
+				
+				//history
 				if(((ins[0]=='h') || (ins[0]=='H')) &&
+					((ins[1]=='i') || (ins[1]=='I')) &&
+					((ins[2]=='s') || (ins[2]=='S')) &&
+					((ins[3]=='t') || (ins[3]=='T')) &&
+					((ins[4]=='o') || (ins[4]=='O')) &&
+					((ins[5]=='r') || (ins[5]=='R')) &&
+					((ins[6]=='y') || (ins[6]=='Y')) &&
+					(ins[7]=='\r'))
+					{
+					printf("\n\0");
+					printf(&history.command_history2);
+					printf("\n");
+					printf(&history.command_history1);
+					printf("\n\r\0");
+					}
+				//help HELP
+				else if(((ins[0]=='h') || (ins[0]=='H')) &&
 					((ins[1]=='e') || (ins[1]=='E')) &&
 					((ins[2]=='l') || (ins[2]=='L')) &&
 					((ins[3]=='p') || (ins[3]=='P')) &&
@@ -439,6 +481,7 @@ void shell()
 						printf("\n hello          -- show welcome.\n\r");
 						printf("\n echo <message> -- show the message you tape.\n\r");
 						printf("\n ps             -- show system threads info. \n\r");
+						printf("\n history        -- show tape before. \n\r");
 						printf("\n ^_____^\n\r");
 						printf("\0");
 					}
@@ -450,7 +493,7 @@ void shell()
 					((ins[4]=='o') || (ins[4]=='O')) &&
 					(ins[5]=='\r'))
 					{
-						printf("\n welcome !\n\r");
+						printf("\n welcome !\n\r\0");
 					}
 					//echo	ECHO
 				else if(((ins[0]=='e') || (ins[0]=='E')) &&
@@ -495,13 +538,21 @@ void shell()
 					}	
 					}
 				curr_ins=0;
-				init = 0;	
+				init = 0;
+				a = 0;
+				b = 0;
+				a1=0;
+				b1=0;	
 			}
 			
 		break;	
 		default:
 			curr_ins=0;
 			init = 0;
+			a = 0;
+			b = 0;
+			a1=0;
+			b1=0;
 		}
 	}
 }	
