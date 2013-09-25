@@ -403,10 +403,13 @@ char *statetran(int i){
 	default:return "	Unknow";
 	}
 }
+void scanf(char *x)
+{
+	read(open("/dev/tty0/in", 0), x, 1);
+}
 
 void shell()
 {
-	int fdin;
 	char str[100];
 	char ch;
 	char ins[100];
@@ -414,7 +417,6 @@ void shell()
 	int curr_ins=0;
 	int init = 0;
 	
-	fdin = open("/dev/tty0/in", 0);
 
 	while(1){	
 		switch (init){
@@ -422,11 +424,16 @@ void shell()
 			printf("shell>>");
 			init = 1;
 		break;
-		
 		case 0x1:
 			curr_char=0;
-			read(fdin, &ch, 1);
+			scanf(&ch);
 			
+		if((ch==32)&&(curr_ins <= 0)){
+			str[curr_char++] = ch;
+			ins[curr_ins++] = ch;
+			curr_ins--;
+		}	
+		else{	
 			if((ch==127)&&(curr_ins <= 0)) {//||((ch=='^[[A')||(ch=='^[[B')){
 					str[curr_char++] = '\0';
 			}
@@ -442,6 +449,7 @@ void shell()
 					ins[curr_ins++] = ch;
 				}
 			}
+		}
 			printf(str);
 
 			if(ch=='\r'){
