@@ -448,7 +448,8 @@ void shell()
 				if(((ins[0]=='h') || (ins[0]=='H')) &&
 					((ins[1]=='e') || (ins[1]=='E')) &&
 					((ins[2]=='l') || (ins[2]=='L')) &&
-					((ins[3]=='p') || (ins[3]=='P')) )
+					((ins[3]=='p') || (ins[3]=='P')) &&
+					(ins[4]=='\r'))
 					{
 						printf("\n hello          -- show welcome.\n\r");
 						printf("\n echo <message> -- show the message you tape.\n\r");
@@ -460,7 +461,8 @@ void shell()
 					((ins[1]=='e') || (ins[1]=='E')) &&
 					((ins[2]=='l') || (ins[2]=='L')) &&
 					((ins[3]=='l') || (ins[3]=='L')) &&
-					((ins[4]=='o') || (ins[4]=='O')) )
+					((ins[4]=='o') || (ins[4]=='O')) &&
+					(ins[5]=='\r'))
 					{
 						printf("\n welcome !\n\r");
 					}
@@ -481,7 +483,8 @@ void shell()
 							printf("\n\0");
 					}
 				else if(((ins[0]=='p') || (ins[0]=='P')) &&
-					((ins[1]=='s') || (ins[1]=='S')) )
+					((ins[1]=='s') || (ins[1]=='S')) &&
+					(ins[2]=='\r'))
 					{
 							printf("\n");
 							ps_task_info();	
@@ -496,8 +499,7 @@ void shell()
 					}
 					else{
 					printf("\n");
-					ins[curr_ins-1] = ' ';
-					ins[curr_ins] = '\0';
+					ins[curr_ins-1] = '\0';
 					printf(ins);
 					printf(": command not found\n\r");
 					}	
