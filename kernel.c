@@ -259,19 +259,6 @@ void greeting()
 	}
 }
 
-void echo()
-{
-	int fdout, fdin;
-	char c;
-	fdout = open("/dev/tty0/out", 0);
-	fdin = open("/dev/tty0/in", 0);
-
-	while (1) {
-		read(fdin, &c, 1);
-		write(fdout, &c, 1);
-	}
-}
-
 void rs232_xmit_msg_task()
 {
 	int fdout, fdin;
@@ -308,16 +295,6 @@ void queue_str_task(const char *str, int delay)
 		/* Wait. */
 		sleep(delay);
 	}
-}
-
-void queue_str_task1()
-{
-	queue_str_task("Hello 1\n", 200);
-}
-
-void queue_str_task2()
-{
-	queue_str_task("Hello 2\n", 50);
 }
 
 void serial_readwrite_task()
@@ -428,17 +405,17 @@ void shell()
 			curr_char=0;
 			scanf(&ch);
 			
-		if((ch==32)&&(curr_ins <= 0)){
+		if((ch==32)&&(curr_ins <= 0)){		//fix <space><command>
 			str[curr_char++] = ch;
 			ins[curr_ins++] = ch;
 			curr_ins--;
 		}	
 		else{	
-			if((ch==127)&&(curr_ins <= 0)) {//||((ch=='^[[A')||(ch=='^[[B')){
+			if((ch==127)&&(curr_ins <= 0)) {//||((ch=='^[[A')||(ch=='^[[B')){  //fix <backspace> but <up> <down> still fault
 					str[curr_char++] = '\0';
 			}
 			else {
-				if((ch==127)&&(curr_ins > 0)){
+				if((ch==127)&&(curr_ins > 0)){		//fix <space> ...  <backspace> can work success
 					str[curr_char++] = '\b';
 					str[curr_char++] = ' ';
 					str[curr_char++] = '\b';
@@ -452,7 +429,7 @@ void shell()
 		}
 			printf(str);
 
-			if(ch=='\r'){
+			if(ch=='\r'){//help HELP
 				if(((ins[0]=='h') || (ins[0]=='H')) &&
 					((ins[1]=='e') || (ins[1]=='E')) &&
 					((ins[2]=='l') || (ins[2]=='L')) &&
@@ -465,6 +442,7 @@ void shell()
 						printf("\n ^_____^\n\r");
 						printf("\0");
 					}
+					//hello	HELLO
 				else if(((ins[0]=='h') || (ins[0]=='H')) &&
 					((ins[1]=='e') || (ins[1]=='E')) &&
 					((ins[2]=='l') || (ins[2]=='L')) &&
@@ -474,6 +452,7 @@ void shell()
 					{
 						printf("\n welcome !\n\r");
 					}
+					//echo	ECHO
 				else if(((ins[0]=='e') || (ins[0]=='E')) &&
 					((ins[1]=='c') || (ins[1]=='C')) &&
 					((ins[2]=='h') || (ins[2]=='H')) &&
@@ -490,6 +469,7 @@ void shell()
 							printf(echo);
 							printf("\n\0");
 					}
+					//ps	PS
 				else if(((ins[0]=='p') || (ins[0]=='P')) &&
 					((ins[1]=='s') || (ins[1]=='S')) &&
 					(ins[2]=='\r'))
@@ -498,6 +478,7 @@ void shell()
 							ps_task_info();	
 					}	
 				else {
+					//when echo not echo<space>
 					if(((ins[0]=='e') || (ins[0]=='E')) &&
 					((ins[1]=='c') || (ins[1]=='C')) &&
 					((ins[2]=='h') || (ins[2]=='H')) &&
@@ -505,7 +486,8 @@ void shell()
 					{
 					printf("\n you should tape echo <message> \n\r");
 					}
-					else{
+					else	//no command
+					{
 					printf("\n");
 					ins[curr_ins-1] = '\0';
 					printf(ins);
@@ -534,10 +516,8 @@ void ps_task_info()
 		printf("Task no =	");
 		int2char(i,str);
 		printf(str);
-
 		printf("	;state = ");
 		printf(statetran(tasks[i].status));
-
 		printf("	;priority = ");	
 		int2char((tasks[i].priority),str1);
 		printf(str1);
