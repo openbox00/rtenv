@@ -5,9 +5,6 @@
 
 #include <stddef.h>
 
-////test
-
-
 void *memcpy(void *dest, const void *src, size_t n);
 
 int strcmp(const char *a, const char *b) __attribute__ ((naked));
@@ -108,7 +105,6 @@ struct task_control_block {
     struct task_control_block **prev;
     struct task_control_block  *next;
 };
-
 
 /********************************************************/
 struct task_control_block tasks[TASK_LIMIT];
@@ -384,7 +380,7 @@ void first()
 	while(1);
 }
 
-void prinrf(char *str){
+void printf(char *str){
 	write(mq_open("/tmp/mqueue/out", 0), str,strlen(str)+1);
 }
 
@@ -410,25 +406,20 @@ char *statetran(int i){
 
 void shell()
 {
-	int fdout, fdin;
+	int fdin;
 	char str[100];
 	char ch;
-	char hello[50] = "\n welcome !\n\r";
 	char ins[100];
-	int done;
 	int curr_char=0;
 	int curr_ins=0;
-	char shell[10]= "shell>>";
-	
 	int init = 0;
 	
-	fdout = mq_open("/tmp/mqueue/out", 0);
 	fdin = open("/dev/tty0/in", 0);
 
 	while(1){	
 		switch (init){
 		case 0x0:
-			write(fdout, shell,10);
+			printf("shell>>");
 			init = 1;
 		break;
 		
@@ -436,14 +427,7 @@ void shell()
 			curr_char=0;
 			read(fdin, &ch, 1);
 			
-			if((ch==127)&&(curr_ins <= 0)){
-					str[curr_char++] = ' ';
-					str[curr_char++] = '\b';
-					str[curr_char++] = '\0';
-			}
-			else if((ch==24)||(ch==25)){
-					str[curr_char++] = ' ';
-					str[curr_char++] = '\b';
+			if((ch==127)&&(curr_ins <= 0)) {//||((ch=='^[[A')||(ch=='^[[B')){
 					str[curr_char++] = '\0';
 			}
 			else {
@@ -455,92 +439,99 @@ void shell()
 				}
 				else{
 					str[curr_char++] = ch;
-					str[curr_char++] = '\0';
 					ins[curr_ins++] = ch;
 				}
 			}
-			write(fdout, str, curr_char+1+1);
+			printf(str);
 
 			if(ch=='\r'){
-				if(ins[0]=='h' && ins[1]=='e' && ins[2]=='l' && ins[3]=='p'){
-						prinrf("\n hello          -- show welcome.\n\r");
-						prinrf("\n echo <message> -- show the message you tape.\n\r");
-						prinrf("\n ps             -- show system threads info. \n\r");
-						prinrf("\n ^_____^\n\r");
-						prinrf("\0");
-					}
-				if(ins[0]=='h' && ins[1]=='e' && ins[2]=='l' && ins[3]=='l' && ins[4]=='o')
+				if(((ins[0]=='h') || (ins[0]=='H')) &&
+					((ins[1]=='e') || (ins[1]=='E')) &&
+					((ins[2]=='l') || (ins[2]=='L')) &&
+					((ins[3]=='p') || (ins[3]=='P')) )
 					{
-						write(fdout, hello,20);
+						printf("\n hello          -- show welcome.\n\r");
+						printf("\n echo <message> -- show the message you tape.\n\r");
+						printf("\n ps             -- show system threads info. \n\r");
+						printf("\n ^_____^\n\r");
+						printf("\0");
 					}
-				else if (ins[0]=='e' && ins[1]=='c' && ins[2]=='h' && ins[3]=='o')
+				else if(((ins[0]=='h') || (ins[0]=='H')) &&
+					((ins[1]=='e') || (ins[1]=='E')) &&
+					((ins[2]=='l') || (ins[2]=='L')) &&
+					((ins[3]=='l') || (ins[3]=='L')) &&
+					((ins[4]=='o') || (ins[4]=='O')) )
+					{
+						printf("\n welcome !\n\r");
+					}
+				else if(((ins[0]=='e') || (ins[0]=='E')) &&
+					((ins[1]=='c') || (ins[1]=='C')) &&
+					((ins[2]=='h') || (ins[2]=='H')) &&
+					((ins[3]=='o') || (ins[3]=='O')) &&
+					(ins[4]==32))
 					{
 							int i = 5;
 							int echocunt = 0;
 							char echo[100];
-							curr_char=0;
-							str[curr_char++] = '\n';
-							str[curr_char++] = '\0';
-							write(fdout, str, curr_char+1+1);
+							printf("\n\0");
 							for (i;i<curr_ins;i++){
 								echo[echocunt++]=ins[i];
 							}
-							echo[echocunt++] = '\n';
-							echo[echocunt++] = '\0';
-							write(fdout, echo, echocunt+1+1);
-							
+							printf(echo);
+							printf("\n\0");
 					}
-				else if (ins[0]=='p' && ins[1]=='s')
+				else if(((ins[0]=='p') || (ins[0]=='P')) &&
+					((ins[1]=='s') || (ins[1]=='S')) )
 					{
-							prinrf("\n");
+							printf("\n");
 							ps_task_info();	
 					}	
 				else {
-						curr_char=0;
-						init = 0;
-						str[curr_char++] = '\n';
-						str[curr_char++] = '\0';
-						write(fdout, str, curr_char+1+1);
+					if(((ins[0]=='e') || (ins[0]=='E')) &&
+					((ins[1]=='c') || (ins[1]=='C')) &&
+					((ins[2]=='h') || (ins[2]=='H')) &&
+					((ins[3]=='o') || (ins[3]=='O')))
+					{
+					printf("\n you should tape echo <message> \n\r");
+					}
+					else{
+					printf("\n");
+					ins[curr_ins-1] = ' ';
+					ins[curr_ins] = '\0';
+					printf(ins);
+					printf(": command not found\n\r");
 					}	
+					}
 				curr_ins=0;
 				init = 0;	
 			}
 			
 		break;	
 		default:
+			curr_ins=0;
 			init = 0;
 		}
 	}
 }	
 
-
 void ps_task_info()
 {
-	int fdout;
-	int fdin;
 	int i = 0;
 	char str[2] = {0,0,0};
 	char str1[2] = {0,0,0};
 
-	fdout = mq_open("/tmp/mqueue/out", 0);
-	fdin = open("/dev/tty0/in", 0);
-
-	
 	for(i;i<=task_count;i++){
-		prinrf("Task no =	");
+		printf("Task no =	");
 		int2char(i,str);
-		prinrf(str);
-	
-		prinrf("	;state = ");
-		prinrf(statetran(tasks[i].status));
+		printf(str);
 
-		prinrf("	;priority = ");	
-		
+		printf("	;state = ");
+		printf(statetran(tasks[i].status));
+
+		printf("	;priority = ");	
 		int2char((tasks[i].priority),str1);
-		prinrf(str1);
-		prinrf("\n");
-		prinrf("\r");
-		prinrf("\0");
+		printf(str1);
+		printf("\n\r\0");
 	}
 }
 
