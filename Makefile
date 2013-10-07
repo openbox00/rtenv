@@ -4,6 +4,7 @@ QEMU_STM32 ?= ../qemu_stm32/arm-softmmu/qemu-system-arm
 ARCH=CM3
 VENDOR=ST
 PLAT=STM32F10x
+ENV=-semihosting -nographic -monitor null -serial null 
 
 LIBDIR = .
 CMSIS_LIB=$(LIBDIR)/libraries/CMSIS/$(ARCH)
@@ -13,7 +14,7 @@ CMSIS_PLAT_SRC = $(CMSIS_LIB)/DeviceSupport/$(VENDOR)/$(PLAT)
 
 all: main.bin
 
-main.bin: kernel.c context_switch.s syscall.s syscall.h
+main.bin: kernel.c context_switch.s syscall.s syscall.h myshell.h myshell.c systemdef.h
 	$(CROSS_COMPILE)gcc \
 		-Wl,-Tmain.ld -nostartfiles \
 		-I . \
@@ -39,21 +40,22 @@ main.bin: kernel.c context_switch.s syscall.s syscall.h
 		syscall.s \
 		stm32_p103.c \
 		kernel.c \
+		myshell.c \
 		memcpy.s
 	$(CROSS_COMPILE)objcopy -Obinary main.elf main.bin
 	$(CROSS_COMPILE)objdump -S main.elf > main.list
 
 qemu: main.bin $(QEMU_STM32)
-	$(QEMU_STM32) -M stm32-p103 -semihosting -nographic -monitor null -serial null -kernel main.bin 
+	$(QEMU_STM32) -M stm32-p103 -kernel main.bin 
 
 qemudbg: main.bin $(QEMU_STM32)
 	$(QEMU_STM32) -M stm32-p103 \
 		-gdb tcp::3333 -S \
-		-kernel main.bin 
+		$(ENV) -kernel main.bin 
 
 
 qemu_remote: main.bin $(QEMU_STM32)
-	$(QEMU_STM32) -M stm32-p103 -kernel main.bin -vnc :1
+	$(QEMU_STM32) -M stm32-p103 $(ENV) -kernel main.bin -vnc :1
 
 qemudbg_remote: main.bin $(QEMU_STM32)
 	$(QEMU_STM32) -M stm32-p103 \

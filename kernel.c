@@ -2,15 +2,20 @@
 #include "RTOSConfig.h"
 
 #include "syscall.h"
+#include "myshell.h"
 
 #include <stddef.h>
+
+#include "systemdef.h"
+
+struct task_info task_info_t;
 
 void *memcpy(void *dest, const void *src, size_t n);
 
 int strcmp(const char *a, const char *b) __attribute__ ((naked));
 int strcmp(const char *a, const char *b)
 {
-	asm(
+	__asm__(
         "strcmp_lop:                \n"
         "   ldrb    r2, [r0],#1     \n"
         "   ldrb    r3, [r1],#1     \n"
@@ -27,7 +32,7 @@ int strcmp(const char *a, const char *b)
 size_t strlen(const char *s) __attribute__ ((naked));
 size_t strlen(const char *s)
 {
-	asm(
+	__asm__(
 		"	sub  r3, r0, #1			\n"
         "strlen_loop:               \n"
 		"	ldrb r2, [r3, #1]!		\n"
@@ -48,72 +53,6 @@ void puts(char *s)
 		s++;
 	}
 }
-
-#define STACK_SIZE 512 /* Size of task stacks in words */
-#define TASK_LIMIT 8  /* Max number of tasks we can handle */
-#define PIPE_BUF   64 /* Size of largest atomic pipe message */
-#define PATH_MAX   32 /* Longest absolute path */
-#define PIPE_LIMIT (TASK_LIMIT * 2)
-
-#define PATHSERVER_FD (TASK_LIMIT + 3) 
-	/* File descriptor of pipe to pathserver */
-
-#define PRIORITY_DEFAULT 20
-#define PRIORITY_LIMIT (PRIORITY_DEFAULT * 2 - 1)
-
-#define TASK_READY      0
-#define TASK_WAIT_READ  1
-#define TASK_WAIT_WRITE 2
-#define TASK_WAIT_INTR  3
-#define TASK_WAIT_TIME  4
-
-#define S_IFIFO 1
-#define S_IMSGQ 2
-
-#define O_CREAT 4
-
-
-/* Stack struct of user thread, see "Exception entry and return" */
-struct user_thread_stack {
-	unsigned int r4;
-	unsigned int r5;
-	unsigned int r6;
-	unsigned int r7;
-	unsigned int r8;
-	unsigned int r9;
-	unsigned int r10;
-	unsigned int fp;
-	unsigned int _lr;	/* Back to system calls or return exception */
-	unsigned int _r7;	/* Backup from isr */
-	unsigned int r0;
-	unsigned int r1;
-	unsigned int r2;
-	unsigned int r3;
-	unsigned int ip;
-	unsigned int lr;	/* Back to user thread code */
-	unsigned int pc;
-	unsigned int xpsr;
-	unsigned int stack[STACK_SIZE - 18];
-};
-
-/* Task Control Block */
-struct task_control_block {
-    struct user_thread_stack *stack;
-    int pid;
-    int status;
-    int priority;
-    struct task_control_block **prev;
-    struct task_control_block  *next;
-};
-
-struct command_history {
-   char command_history1[100];
-   char command_history2[100];
-};
-/********************************************************/
-struct task_control_block tasks[TASK_LIMIT];
-size_t task_count = 0;
-/********************************************************/
 
 /* 
  * pathserver assumes that all files are FIFOs that were registered
@@ -361,220 +300,6 @@ void first()
 	while(1);
 }
 
-void printf(char *str){
-	write(mq_open("/tmp/mqueue/out", 0), str,strlen(str)+1);
-}
-
-void int2char(int x, char *str){
-	if(x<10){
-	str[0] = 48+x;
-	}else{
-	str[1] =  48+x%10;
-	str[0] =  48+x/10;
-	}
-}
-
-char *statetran(int i){
-	switch(i){
-	case 0x0:return	"	TASK_READY";
-	case 0x1:return	"	TASK_WAIT_READ";
-	case 0x2:return	"	TASK_WAIT_WRITE";
-	case 0x3:return	"	TASK_WAIT_INTR";	
-	case 0x4:return	"	TASK_WAIT_TIME";
-	default:return "	Unknow";
-	}
-}
-void scanf(char *x)
-{
-	read(open("/dev/tty0/in", 0), x, 1);
-}
-
-void shell()
-{
-	char str[100];
-	char ch;
-	char ins[100];
-	int curr_char=0;
-	int curr_ins=0;
-	int init = 0;
-	int history_count =1;
-	struct command_history history;
-	int a=0;
-	int b=0;
-	int a1=0;
-	int b1=0;	
-
-	while(1){	
-		switch (init){
-		case 0x0:
-			printf("shell>>");
-			init = 1;
-		break;
-		case 0x1:
-			curr_char=0;
-			scanf(&ch);
-			
-		if((ch==32)&&(curr_ins <= 0)){		//fix <space><command>
-			str[curr_char++] = ch;
-			ins[curr_ins++] = ch;
-			curr_ins--;
-		}	
-		else{	
-			//fix <backspace> but <up> <down> still fault
-			if((ch==127)&&(curr_ins <= 0)){  
-					str[curr_char++] = '\0';
-			}
-			else {
-				if((ch==127)&&(curr_ins > 0)){		//fix <space> ...  <backspace> can work success
-					str[curr_char++] = '\b';
-					str[curr_char++] = ' ';
-					str[curr_char++] = '\b';
-					curr_ins--;
-				}
-				else{
-					str[curr_char++] = ch;
-					ins[curr_ins++] = ch;
-				}
-			}
-		}
-			printf(str);
-
-			if(ch=='\r'){
-				history_count++;
-				if(history_count%2 == 0){
-					for(a1;a1<100;a1++)
-					history.command_history1 [a1] = 0;
-					for(a;a<curr_ins;a++)
-					history.command_history1[a] = ins[a];
-				}
-				else{
-					for(b1;b1<100;b1++)
-					history.command_history2[b1] = 0;
-					for(b;b<curr_ins;b++)
-					history.command_history2[b] = ins[b];
-				}
-				
-				
-				//history
-				if(((ins[0]=='h') || (ins[0]=='H')) &&
-					((ins[1]=='i') || (ins[1]=='I')) &&
-					((ins[2]=='s') || (ins[2]=='S')) &&
-					((ins[3]=='t') || (ins[3]=='T')) &&
-					((ins[4]=='o') || (ins[4]=='O')) &&
-					((ins[5]=='r') || (ins[5]=='R')) &&
-					((ins[6]=='y') || (ins[6]=='Y')) &&
-					(ins[7]=='\r'))
-					{
-					printf("\n\0");
-					printf(&history.command_history2);
-					printf("\n");
-					printf(&history.command_history1);
-					printf("\n\r\0");
-					}
-				//help HELP
-				else if(((ins[0]=='h') || (ins[0]=='H')) &&
-					((ins[1]=='e') || (ins[1]=='E')) &&
-					((ins[2]=='l') || (ins[2]=='L')) &&
-					((ins[3]=='p') || (ins[3]=='P')) &&
-					(ins[4]=='\r'))
-					{
-						printf("\n hello          -- show welcome.\n\r");
-						printf("\n echo <message> -- show the message you tape.\n\r");
-						printf("\n ps             -- show system threads info. \n\r");
-						printf("\n history        -- show tape before. \n\r");
-						printf("\n ^_____^\n\r");
-						printf("\0");
-					}
-					//hello	HELLO
-				else if(((ins[0]=='h') || (ins[0]=='H')) &&
-					((ins[1]=='e') || (ins[1]=='E')) &&
-					((ins[2]=='l') || (ins[2]=='L')) &&
-					((ins[3]=='l') || (ins[3]=='L')) &&
-					((ins[4]=='o') || (ins[4]=='O')) &&
-					(ins[5]=='\r'))
-					{
-						printf("\n welcome !\n\r\0");
-					}
-					//echo	ECHO
-				else if(((ins[0]=='e') || (ins[0]=='E')) &&
-					((ins[1]=='c') || (ins[1]=='C')) &&
-					((ins[2]=='h') || (ins[2]=='H')) &&
-					((ins[3]=='o') || (ins[3]=='O')) &&
-					(ins[4]==32))
-					{
-							int i = 5;
-							int echocunt = 0;
-							char echo[100];
-							printf("\n\0");
-							for (i;i<curr_ins;i++){
-								echo[echocunt++]=ins[i];
-							}
-							printf(echo);
-							printf("\n\0");
-					}
-					//ps	PS
-				else if(((ins[0]=='p') || (ins[0]=='P')) &&
-					((ins[1]=='s') || (ins[1]=='S')) &&
-					(ins[2]=='\r'))
-					{
-							printf("\n");
-							ps_task_info();	
-					}	
-				else {
-					//when echo not echo<space>
-					if(((ins[0]=='e') || (ins[0]=='E')) &&
-					((ins[1]=='c') || (ins[1]=='C')) &&
-					((ins[2]=='h') || (ins[2]=='H')) &&
-					((ins[3]=='o') || (ins[3]=='O')))
-					{
-					printf("\n you should tape echo <message> \n\r");
-					}
-					else	//no command
-					{
-					printf("\n");
-					ins[curr_ins-1] = '\0';
-					printf(ins);
-					printf(": command not found\n\r");
-					}	
-					}
-				curr_ins=0;
-				init = 0;
-				a = 0;
-				b = 0;
-				a1=0;
-				b1=0;	
-			}
-			
-		break;	
-		default:
-			curr_ins=0;
-			init = 0;
-			a = 0;
-			b = 0;
-			a1=0;
-			b1=0;
-		}
-	}
-}	
-
-void ps_task_info()
-{
-	int i = 0;
-	char str[2] = {0,0,0};
-	char str1[2] = {0,0,0};
-
-	for(i;i<=task_count;i++){
-		printf("Task no =	");
-		int2char(i,str);
-		printf(str);
-		printf("	;state = ");
-		printf(statetran(tasks[i].status));
-		printf("	;priority = ");	
-		int2char((tasks[i].priority),str1);
-		printf(str1);
-		printf("\n\r\0");
-	}
-}
 
 struct pipe_ringbuffer {
 	int start;
@@ -870,11 +595,11 @@ _mknod(struct pipe_ringbuffer *pipe, int dev)
 int main()
 {
 	unsigned int stacks[TASK_LIMIT][STACK_SIZE];
-
+	struct task_control_block tasks[TASK_LIMIT];
 	struct pipe_ringbuffer pipes[PIPE_LIMIT];
 	struct task_control_block *ready_list[PRIORITY_LIMIT + 1];  /* [0 ... 39] */
 	struct task_control_block *wait_list = NULL;
-
+	size_t task_count = 0;	
 	size_t current_task = 0;
 	size_t i;
 	struct task_control_block *task;
@@ -882,6 +607,10 @@ int main()
 	unsigned int tick_count = 0;
 	
 
+	/**/
+	task_info_t.tasks = tasks;
+	task_info_t.task_count = &task_count;
+	/**/
 
 	SysTick_Config(configCPU_CLOCK_HZ / configTICK_RATE_HZ);
 
