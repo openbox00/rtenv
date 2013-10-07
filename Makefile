@@ -44,12 +44,12 @@ main.bin: kernel.c context_switch.s syscall.s syscall.h
 	$(CROSS_COMPILE)objdump -S main.elf > main.list
 
 qemu: main.bin $(QEMU_STM32)
-	$(QEMU_STM32) -M stm32-p103 -kernel main.bin
+	$(QEMU_STM32) -M stm32-p103 -semihosting -nographic -monitor null -serial null -kernel main.bin 
 
 qemudbg: main.bin $(QEMU_STM32)
 	$(QEMU_STM32) -M stm32-p103 \
 		-gdb tcp::3333 -S \
-		-kernel main.bin
+		-kernel main.bin 
 
 
 qemu_remote: main.bin $(QEMU_STM32)
