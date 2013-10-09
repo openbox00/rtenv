@@ -126,20 +126,18 @@ union param_t
 };
 
 typedef union param_t param;
-static inline int host_call(enum HOST_SYSCALL action, void *arg)
+
+/* SemihostCall */
+static inline int SemihostCall(enum SemihostReasons reason, void *arg)
 {
-    /* For Thumb-2 code use the BKPT instruction instead of SWI.
-     * Refer to:
-     * http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0471c/Bgbjhiea.html
-     * http://en.wikipedia.org/wiki/ARM_Cortex-M#Cortex-M4 */
-    int result;
-    __asm__( \
-      "bkpt 0xAB\n"\
-      "nop\n" \
-      "bx lr\n"\
-        :"=r" (result) ::\
-    );
-    return result;
+	#define AngelSWI 		0xAB
+	#define AngelSWIInsn	"bkpt"
+	int value;
+	asm volatile ("mov r0, %1; mov r1, %2; " AngelSWIInsn " %a3; mov %0, r0"
+			: "=r" (value) // Outputs
+			: "r" (reason), "r" (arg), "i" (AngelSWI) // Inputs
+			: "r0", "r1", "r2", "r3", "ip", "lr", "memory", "cc");
+	return value;
 }
 
 void print(char *str){
