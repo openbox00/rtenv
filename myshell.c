@@ -10,6 +10,8 @@
 #include "systemdef.h"
 #include <ctype.h> 
 
+#include "semi.h"
+
 extern struct task_info task_info_t;
 
 #define MAX_CMDNAME 19
@@ -85,6 +87,7 @@ const hcmd_entry cmd_data[CMD_COUNT] = {
 	[CMD_SYSCALL] = {.cmd = "system", .func = semihost_function, .description = "do Host system call."}
 };
 
+
 /* Structure for environment variables. */
 typedef struct {
 	char name[MAX_ENVNAME + 1];
@@ -93,41 +96,18 @@ typedef struct {
 evar_entry env_var[MAX_ENVCOUNT];
 int env_count = 0;
 
-enum HOST_SYSCALL {
-    HOSTCALL_OPEN        = 0x01,
-    HOSTCALL_CLOSE       = 0x02,
-    HOSTCALL_WRITEC      = 0x03,
-    HOSTCALL_WRITE0      = 0x04,
-    HOSTCALL_WRITE       = 0x05,
-    HOSTCALL_READ        = 0x06,
-    HOSTCALL_READC       = 0x07,
-    HOSTCALL_ISERROR     = 0x08,
-    HOSTCALL_ISTTY       = 0x09,
-    HOSTCALL_SEEK        = 0x0A,
-    HOSTCALL_FLEN        = 0x0C,
-    HOSTCALL_REMOVE      = 0x0E,
-    HOSTCALL_TMPNAM      = 0x0D,
-    HOSTCALL_RENAME      = 0x0F,
-    HOSTCALL_CLOCK       = 0x10,
-    HOSTCALL_TIME        = 0x11,
-    HOSTCALL_SYSTEM      = 0x12,
-    HOSTCALL_ERRNO       = 0x13,
-    HOSTCALL_GET_CMDLINE = 0x15,
-    HOSTCALL_HEAPINFO    = 0x16,
-    HOSTCALL_ELAPSED     = 0x30,
-    HOSTCALL_TICKFREQ    = 0x31
+enum SemihostReasons {
+	// Standard ARM Semihosting Commands:
+	Semihost_SYS_OPEN   = 0x1,
+	Semihost_SYS_CLOSE  = 0x2,
+	Semihost_SYS_WRITE  = 0x5,
+	Semihost_SYS_READ   = 0x6,
+	Semihost_SYS_ISTTY  = 0x9,
+	Semihost_SYS_SEEK   = 0xa,
+	Semihost_SYS_ENSURE = 0xb,
+	Semihost_SYS_FLEN   = 0xc
 };
 
-union param_t
-{
-    int   pdInt;
-    void *pdPtr;
-    char *pdChrPtr;
-};
-
-typedef union param_t param;
-
-/* SemihostCall */
 static inline int SemihostCall(enum SemihostReasons reason, void *arg)
 {
 	#define AngelSWI 		0xAB
@@ -145,12 +125,7 @@ void print(char *str){
 }
 
 void semihost_function(int argc, char *argv[]){
-	char *cmd= "ls"; //assign ls for host
-	param semi_param[3] = {
-        { .pdPtr = *cmd},
-        { .pdInt = 3 }
-   	 };
-    return host_call(HOSTCALL_SYSTEM, semi_param);
+	semishell();
 }
 
 char *find_envvar(const char *name)
