@@ -24,16 +24,14 @@ int fdout_host;
 int fin_host;
 
 /* Command handlers. */
-#if 0
-void show_echo_host(int argc, char *argv[]);
+
 void show_cmd_info_host(int argc, char *argv[]);
 void show_history_host(int argc, char *argv[]);
-#endif
+
 
 /* Enumeration for command types. */
 enum {
-	CMD_ECHO_HOST = 0,
-	CMD_HELP_HOST,
+	CMD_HELP_HOST = 0,
 	CMD_HISTORY_HOST,
 	CMD_COUNT_HOST
 } CMD_TYPE_HOST;
@@ -41,19 +39,15 @@ enum {
 /* Structure for command handler. */
 
 typedef struct {
-	char cmd[MAX_CMDNAME_host + 1];
-	void (*func)(int, char**);
-	char description[MAX_CMDHELP_host + 1];
-} hcmd_entry;
+	char cmd_host[MAX_CMDNAME_host + 1];
+	void (*func_host)(int, char**);
+	char description_host[MAX_CMDHELP_host + 1];
+} hcmd_entry_host;
 
-#if 0
-hcmd_entry cmd_data_host[CMD_COUNT_HOST] = {
-	[CMD_ECHO_HOST] = {.cmd = "echo", .func = show_echo_host, .description = "Show words you input."},
-	[CMD_HELP_HOST] = {.cmd = "help", .func = show_cmd_info_host, .description = "List all commands you can use."},
-	[CMD_HISTORY_HOST] = {.cmd = "history", .func = show_history_host, .description = "Show latest commands entered."}
+const hcmd_entry_host cmd_data_host[CMD_COUNT_HOST] = {
+	[CMD_HELP_HOST] = {.cmd_host = "h", .func_host = show_cmd_info_host, .description_host = "List all commands you can use."},
+	[CMD_HISTORY_HOST] = {.cmd_host = "his", .func_host = show_history_host, .description_host = "Show latest commands entered."}
 };
-#endif
-
 
 /* Structure for environment variables. */
 typedef struct {
@@ -63,6 +57,31 @@ typedef struct {
 evar_entry env_var_host[MAX_ENVCOUNT_host];
 int env_count_host = 0;
 
+/* SemihostCall */
+enum SemihostReasons {
+	// Standard ARM Semihosting Commands:
+	Semihost_SYS_OPEN   = 0x1,
+	Semihost_SYS_CLOSE  = 0x2,
+	Semihost_SYS_WRITE  = 0x5,
+	Semihost_SYS_READ   = 0x6,
+	Semihost_SYS_ISTTY  = 0x9,
+	Semihost_SYS_SEEK   = 0xa,
+	Semihost_SYS_ENSURE = 0xb,
+	Semihost_SYS_FLEN   = 0xc
+};
+
+static inline int SemihostCall(enum SemihostReasons reason, void *arg)
+{
+	#define AngelSWI     0xAB
+	#define AngelSWIInsn  "bkpt"
+	int value;
+	asm volatile ("mov r0, %1; mov r1, %2; " AngelSWIInsn " %a3; mov %0, r0"
+	: "=r" (value) // Outputs
+	: "r" (reason), "r" (arg), "i" (AngelSWI) // Inputs
+	: "r0", "r1", "r2", "r3", "ip", "lr", "memory", "cc");
+
+	return value;
+}
 
 void print_host(char *str){
 	write(mq_open("/tmp/mqueue/out", 0), str,strlen(str)+1);
@@ -83,44 +102,16 @@ char *find_envvar_host(const char *name)
 //help
 void show_cmd_info_host(int argc, char* argv[])
 {
-#if 0
-	const char help_desp[] = "This system has commands as follow\n\r\0";
+	const char help_desp[] = "Host system has commands as follow\n\r\0";
 	int i;
 
 	write(fdout_host, &help_desp, sizeof(help_desp));
 	for (i = 0; i < CMD_COUNT_HOST; i++) {
-		print_host(cmd_data_host[i].cmd);
+		print_host(cmd_data_host[i].cmd_host);
 		print_host("	: ");
-		print_host(cmd_data_host[i].description);		
+		print_host(cmd_data_host[i].description_host);		
 		write(fdout_host, next_line_host, 3);
 	}
-#endif
-}
-
-//echo
-void show_echo_host(int argc, char* argv[])
-{
-#if 0
-	const int _n = 1; /* Flag for "-n" option. */
-	int flag = 0;
-	int i;
-
-	for (i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "-n"))
-			flag |= _n;
-		else
-			break;
-	}
-
-	for (; i < argc; i++) {
-		write(fdout_host, argv[i], strlen(argv[i]) + 1);
-		if (i < argc - 1)
-			write(fdout_host, " ", 2);
-	}
-
-	if (~flag & _n)
-		write(fdout_host, next_line_host, 3);
-#endif
 }
 
 void show_history_host(int argc, char *argv[])
@@ -266,10 +257,10 @@ void check_keyword_host()
 	}
 
 	for (i = 0; i < CMD_COUNT_HOST; i++) {
-//		if (!strcmp(argv[0], cmd_data_host[i].cmd)) {
-//			cmd_data_host[i].func(argc, argv);
-//			break;
-//		}
+		if (!strcmp(argv[0], cmd_data_host[i].cmd_host)) {
+			cmd_data_host[i].func_host(argc, argv);
+			break;
+		}
 	}
 	if (i == CMD_COUNT_HOST) {
 		write(fdout_host, argv[0], strlen(argv[0]) + 1);
