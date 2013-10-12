@@ -9,39 +9,9 @@
 #include <stddef.h>
 #include "systemdef.h"
 #include <ctype.h> 
+#include "semi.h"
 
 extern struct task_info task_info_t;
-
-#define MAX_CMDNAME 19
-#define MAX_ARGC 19
-#define MAX_CMDHELP 1023
-#define HISTORY_COUNT 20
-#define CMDBUF_SIZE 100
-#define MAX_ENVCOUNT 30
-#define MAX_ENVNAME 15
-#define MAX_ENVVALUE 127
-#define STACK_SIZE 512 /* Size of task stacks in words */
-#define TASK_LIMIT 8  /* Max number of tasks we can handle */
-#define PIPE_BUF   64 /* Size of largest atomic pipe message */
-#define PATH_MAX   32 /* Longest absolute path */
-#define PIPE_LIMIT (TASK_LIMIT * 2)
-
-#define PATHSERVER_FD (TASK_LIMIT + 3) 
-	/* File descriptor of pipe to pathserver */
-
-#define PRIORITY_DEFAULT 20
-#define PRIORITY_LIMIT (PRIORITY_DEFAULT * 2 - 1)
-
-#define TASK_READY      0
-#define TASK_WAIT_READ  1
-#define TASK_WAIT_WRITE 2
-#define TASK_WAIT_INTR  3
-#define TASK_WAIT_TIME  4
-
-#define S_IFIFO 1
-#define S_IMSGQ 2
-
-#define O_CREAT 4
 
 char next_line[3] = {'\n','\r','\0'};
 char cmd[HISTORY_COUNT][CMDBUF_SIZE];
@@ -92,15 +62,6 @@ typedef struct {
 } evar_entry;
 evar_entry env_var[MAX_ENVCOUNT];
 int env_count = 0;
-
-union param_t
-{
-    int   pdInt;
-    void *pdPtr;
-    char *pdChrPtr;
-};
-
-typedef union param_t param;
 
 void print(char *str){
 	write(mq_open("/tmp/mqueue/out", 0), str,strlen(str)+1);
@@ -158,7 +119,7 @@ char *statetran(int i){
 }
 
 //this function helps to show int
-char * itoa(int n, char *buffer)
+void itoa(int n, char *buffer)
 {
 	if (n == 0)
 		*(buffer++) = '0';
@@ -179,7 +140,6 @@ char * itoa(int n, char *buffer)
 		}
 	}
 	*buffer = '\0';
-	return *buffer;
 }
 
 //ps
@@ -275,17 +235,6 @@ void show_history(int argc, char *argv[])
 	}
 }
 
-int write_blank(int blank_num)
-{
-	char blank[] = " ";
-	int blank_count = 0;
-
-	while (blank_count <= blank_num) {
-		write(fdout, blank, sizeof(blank));
-		blank_count++;
-	}
-}
-
 void find_events()
 {
 	char buf[CMDBUF_SIZE];
@@ -310,8 +259,6 @@ void find_events()
 		}
 	}
 }
-
-
 
 /* Fill in entire value of argument. */
 int fill_arg(char *const dest, const char *argv)
@@ -431,13 +378,13 @@ void shell()
 {
 	char put_ch[2]={'0','\0'};
 	char *p = NULL;
-	int cmd_count = 0;
 
 	fdout = mq_open("/tmp/mqueue/out", 0);
 	fdin = open("/dev/tty0/in", 0);
 
 	for (;; cur_his = (cur_his + 1) % HISTORY_COUNT) {
 		p = cmd[cur_his];
+		print("\r");
 		print("Shell>>");
 
 		while (1) {
@@ -461,5 +408,6 @@ void shell()
 		}
 		check_keyword();	
 	}
+
 }
 
