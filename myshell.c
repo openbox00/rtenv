@@ -9,9 +9,20 @@
 #include <stddef.h>
 #include "systemdef.h"
 #include <ctype.h> 
+
 #include "semi.h"
 
+
 extern struct task_info task_info_t;
+
+#define MAX_CMDNAME 19
+#define MAX_ARGC 19
+#define MAX_CMDHELP 1023
+#define HISTORY_COUNT 20
+#define CMDBUF_SIZE 100
+#define MAX_ENVCOUNT 30
+#define MAX_ENVNAME 15
+#define MAX_ENVVALUE 127
 
 char next_line[3] = {'\n','\r','\0'};
 char cmd[HISTORY_COUNT][CMDBUF_SIZE];
@@ -145,9 +156,9 @@ void itoa(int n, char *buffer)
 //ps
 void show_task_info(int argc, char* argv[])
 {
-	int task_i;
+	int task_i = 0;
 
-	for (task_i = 0; task_i < *(task_info_t.task_count); task_i++) {
+	for (task_i; task_i < *(task_info_t.task_count); task_i++) {
 		char task_info_pid[2];
 		char task_info_priority[3];
 		print("Task no = ");
@@ -158,7 +169,7 @@ void show_task_info(int argc, char* argv[])
 		print("\t;Priority = ");
 		itoa(task_info_t.tasks[task_i].priority,task_info_priority);
 		print(&task_info_priority);
-		write(fdout, &next_line , 3);
+		write(fdout, next_line , 3);
 	}
 }
 
@@ -170,9 +181,9 @@ void show_cmd_info(int argc, char* argv[])
 
 	write(fdout, &help_desp, sizeof(help_desp));
 	for (i = 0; i < CMD_COUNT; i++) {
-		print(cmd_data[i].cmd);
-		print("	: ");
-		print(cmd_data[i].description);		
+		write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
+		write(fdout, ": ", 3);
+		write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
 		write(fdout, next_line, 3);
 	}
 }
@@ -235,6 +246,17 @@ void show_history(int argc, char *argv[])
 	}
 }
 
+int write_blank(int blank_num)
+{
+	char blank[] = " ";
+	int blank_count = 0;
+
+	while (blank_count <= blank_num) {
+		write(fdout, blank, sizeof(blank));
+		blank_count++;
+	}
+}
+
 void find_events()
 {
 	char buf[CMDBUF_SIZE];
@@ -259,6 +281,8 @@ void find_events()
 		}
 	}
 }
+
+
 
 /* Fill in entire value of argument. */
 int fill_arg(char *const dest, const char *argv)
@@ -378,13 +402,13 @@ void shell()
 {
 	char put_ch[2]={'0','\0'};
 	char *p = NULL;
+	int cmd_count = 0;
 
 	fdout = mq_open("/tmp/mqueue/out", 0);
 	fdin = open("/dev/tty0/in", 0);
 
 	for (;; cur_his = (cur_his + 1) % HISTORY_COUNT) {
 		p = cmd[cur_his];
-		print("\r");
 		print("Shell>>");
 
 		while (1) {
@@ -408,6 +432,5 @@ void shell()
 		}
 		check_keyword();	
 	}
-
 }
 
