@@ -21,7 +21,7 @@ char next_line_host[3] = {'\n','\r','\0'};
 char cmd_host[HISTORY_COUNT_host][CMDBUF_SIZE_host];
 int cur_his_host=0;
 int fdout_host;
-int fdout_host;
+int fin_host;
 
 /* Command handlers. */
 #if 0
@@ -286,7 +286,7 @@ void semishell()
 	char *p = NULL;
 
 	fdout_host = mq_open("/tmp/mqueue/out", 0);
-	fdout_host = open("/dev/tty0/in", 0);
+	fin_host = open("/dev/tty0/in", 0);
 
 	for (;; cur_his_host = (cur_his_host + 1) % HISTORY_COUNT_host) {
 		p = cmd_host[cur_his_host];
@@ -295,7 +295,7 @@ void semishell()
 	
 
 		while (1) {
-			read(fdout_host, put_ch, 1);
+			read(fin_host, put_ch, 1);
 
 			if (put_ch[0] == '\r' || put_ch[0] == '\n') {
 				*p = '\0';
@@ -313,9 +313,9 @@ void semishell()
 				write(fdout_host, put_ch, 2);
 			}
 		}
-		
-		check_keyword_host();	
-
+	
+		check_keyword_host();
+		break;
 	}
 
 }
