@@ -24,11 +24,11 @@ extern struct task_info task_info_t;
 #define MAX_ENVNAME 15
 #define MAX_ENVVALUE 127
 
+#define Backspace 127
+
 char next_line[3] = {'\n','\r','\0'};
 char cmd[HISTORY_COUNT][CMDBUF_SIZE];
 int cur_his=0;
-int fdout;
-int fdin;
 
 /* Command handlers. */
 void export_envvar(int argc, char *argv[]);
@@ -169,7 +169,7 @@ void show_task_info(int argc, char* argv[])
 		print("\t;Priority = ");
 		itoa(task_info_t.tasks[task_i].priority,task_info_priority);
 		print(&task_info_priority);
-		write(fdout, next_line , 3);
+		write(mq_open("/tmp/mqueue/out", 0), next_line , 3);
 	}
 }
 
@@ -179,12 +179,12 @@ void show_cmd_info(int argc, char* argv[])
 	const char help_desp[] = "This system has commands as follow\n\r\0";
 	int i;
 
-	write(fdout, &help_desp, sizeof(help_desp));
+	write(mq_open("/tmp/mqueue/out", 0), &help_desp, sizeof(help_desp));
 	for (i = 0; i < CMD_COUNT; i++) {
-		write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
-		write(fdout, ": ", 3);
-		write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
-		write(fdout, next_line, 3);
+		write(mq_open("/tmp/mqueue/out", 0), cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
+		write(mq_open("/tmp/mqueue/out", 0), ": ", 3);
+		write(mq_open("/tmp/mqueue/out", 0), cmd_data[i].description, strlen(cmd_data[i].description) + 1);
+		write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
 	}
 }
 
@@ -203,13 +203,13 @@ void show_echo(int argc, char* argv[])
 	}
 
 	for (; i < argc; i++) {
-		write(fdout, argv[i], strlen(argv[i]) + 1);
+		write(mq_open("/tmp/mqueue/out", 0), argv[i], strlen(argv[i]) + 1);
 		if (i < argc - 1)
-			write(fdout, " ", 2);
+			write(mq_open("/tmp/mqueue/out", 0), " ", 2);
 	}
 
 	if (~flag & _n)
-		write(fdout, next_line, 3);
+		write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
 }
 
 //man
@@ -226,12 +226,12 @@ void show_man_page(int argc, char *argv[])
 	if (i >= CMD_COUNT)
 		return;
 
-	write(fdout, "NAME: ", 7);
-	write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
-	write(fdout, next_line, 3);
-	write(fdout, "DESCRIPTION: ", 14);
-	write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
-	write(fdout, next_line, 3);
+	write(mq_open("/tmp/mqueue/out", 0), "NAME: ", 7);
+	write(mq_open("/tmp/mqueue/out", 0), cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
+	write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
+	write(mq_open("/tmp/mqueue/out", 0), "DESCRIPTION: ", 14);
+	write(mq_open("/tmp/mqueue/out", 0), cmd_data[i].description, strlen(cmd_data[i].description) + 1);
+	write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
 }
 
 void show_history(int argc, char *argv[])
@@ -240,8 +240,8 @@ void show_history(int argc, char *argv[])
 
 	for (i = cur_his + 1; i <= cur_his + HISTORY_COUNT; i++) {
 		if (cmd[i % HISTORY_COUNT][0]) {
-			write(fdout, cmd[i % HISTORY_COUNT], strlen(cmd[i % HISTORY_COUNT]) + 1);
-			write(fdout, next_line, 3);
+			write(mq_open("/tmp/mqueue/out", 0), cmd[i % HISTORY_COUNT], strlen(cmd[i % HISTORY_COUNT]) + 1);
+			write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
 		}
 	}
 }
@@ -252,7 +252,7 @@ int write_blank(int blank_num)
 	int blank_count = 0;
 
 	while (blank_count <= blank_num) {
-		write(fdout, blank, sizeof(blank));
+		write(mq_open("/tmp/mqueue/out", 0), blank, sizeof(blank));
 		blank_count++;
 	}
 }
@@ -392,9 +392,9 @@ void check_keyword()
 		}
 	}
 	if (i == CMD_COUNT) {
-		write(fdout, argv[0], strlen(argv[0]) + 1);
-		write(fdout, ": command not found", 20);
-		write(fdout, next_line, 3);
+		write(mq_open("/tmp/mqueue/out", 0), argv[0], strlen(argv[0]) + 1);
+		write(mq_open("/tmp/mqueue/out", 0), ": command not found", 20);
+		write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
 	}
 }
 
@@ -402,35 +402,32 @@ void shell()
 {
 	char put_ch[2]={'0','\0'};
 	char *p = NULL;
-	int cmd_count = 0;
-
-	fdout = mq_open("/tmp/mqueue/out", 0);
-	fdin = open("/dev/tty0/in", 0);
 
 	for (;; cur_his = (cur_his + 1) % HISTORY_COUNT) {
 		p = cmd[cur_his];
 		print("Shell>>");
 
 		while (1) {
-			read(fdin, put_ch, 1);
+			read(open("/dev/tty0/in", 0), put_ch, 1);
 
 			if (put_ch[0] == '\r' || put_ch[0] == '\n') {
 				*p = '\0';
-				write(fdout, next_line, 3);
+				print(next_line);
 				break;
 			}
-			else if (put_ch[0] == 127 || put_ch[0] == '\b') {
+			else if (put_ch[0] == Backspace || put_ch[0] == '\b') {
 				if (p > cmd[cur_his]) {
 					p--;
-					write(fdout, "\b \b", 4);
+					print("\b \b");
 				}
 			}
 			else if (p - cmd[cur_his] < CMDBUF_SIZE - 1) {
 				*p++ = put_ch[0];
-				write(fdout, put_ch, 2);
+				print(put_ch);
 			}
 		}
 		check_keyword();	
 	}
 }
+
 
