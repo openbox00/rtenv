@@ -169,22 +169,22 @@ void show_task_info(int argc, char* argv[])
 		print("\t;Priority = ");
 		itoa(task_info_t.tasks[task_i].priority,task_info_priority);
 		print(&task_info_priority);
-		write(mq_open("/tmp/mqueue/out", 0), next_line , 3);
+		print(next_line);
 	}
 }
 
 //help
 void show_cmd_info(int argc, char* argv[])
 {
-	const char help_desp[] = "This system has commands as follow\n\r\0";
+	char *help_desp = "This system has commands as follow\n\r\0";
 	int i;
 
-	write(mq_open("/tmp/mqueue/out", 0), &help_desp, sizeof(help_desp));
+	print(help_desp);
 	for (i = 0; i < CMD_COUNT; i++) {
-		write(mq_open("/tmp/mqueue/out", 0), cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
-		write(mq_open("/tmp/mqueue/out", 0), ": ", 3);
-		write(mq_open("/tmp/mqueue/out", 0), cmd_data[i].description, strlen(cmd_data[i].description) + 1);
-		write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
+		print(cmd_data[i].cmd);
+		print("\t: ");
+		print(cmd_data[i].description);
+		print(next_line);
 	}
 }
 
@@ -203,13 +203,13 @@ void show_echo(int argc, char* argv[])
 	}
 
 	for (; i < argc; i++) {
-		write(mq_open("/tmp/mqueue/out", 0), argv[i], strlen(argv[i]) + 1);
+		print(argv[i]);
 		if (i < argc - 1)
-			write(mq_open("/tmp/mqueue/out", 0), " ", 2);
+			print(" ");
 	}
 
 	if (~flag & _n)
-		write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
+		print(next_line);
 }
 
 //man
@@ -225,13 +225,12 @@ void show_man_page(int argc, char *argv[])
 
 	if (i >= CMD_COUNT)
 		return;
-
-	write(mq_open("/tmp/mqueue/out", 0), "NAME: ", 7);
-	write(mq_open("/tmp/mqueue/out", 0), cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
-	write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
-	write(mq_open("/tmp/mqueue/out", 0), "DESCRIPTION: ", 14);
-	write(mq_open("/tmp/mqueue/out", 0), cmd_data[i].description, strlen(cmd_data[i].description) + 1);
-	write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
+	print("NAME: ");
+	print(cmd_data[i].cmd);
+	print(next_line);
+	print("DESCRIPTION: ");
+	print(cmd_data[i].description);
+	print(next_line);
 }
 
 void show_history(int argc, char *argv[])
@@ -240,20 +239,9 @@ void show_history(int argc, char *argv[])
 
 	for (i = cur_his + 1; i <= cur_his + HISTORY_COUNT; i++) {
 		if (cmd[i % HISTORY_COUNT][0]) {
-			write(mq_open("/tmp/mqueue/out", 0), cmd[i % HISTORY_COUNT], strlen(cmd[i % HISTORY_COUNT]) + 1);
-			write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
+			print(cmd[i % HISTORY_COUNT]);
+			print(next_line);
 		}
-	}
-}
-
-int write_blank(int blank_num)
-{
-	char blank[] = " ";
-	int blank_count = 0;
-
-	while (blank_count <= blank_num) {
-		write(mq_open("/tmp/mqueue/out", 0), blank, sizeof(blank));
-		blank_count++;
 	}
 }
 
@@ -281,8 +269,6 @@ void find_events()
 		}
 	}
 }
-
-
 
 /* Fill in entire value of argument. */
 int fill_arg(char *const dest, const char *argv)
@@ -392,9 +378,9 @@ void check_keyword()
 		}
 	}
 	if (i == CMD_COUNT) {
-		write(mq_open("/tmp/mqueue/out", 0), argv[0], strlen(argv[0]) + 1);
-		write(mq_open("/tmp/mqueue/out", 0), ": command not found", 20);
-		write(mq_open("/tmp/mqueue/out", 0), next_line, 3);
+		print(argv[0]);
+		print(": command not found");
+		print(next_line);
 	}
 }
 
