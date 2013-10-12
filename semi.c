@@ -1,6 +1,3 @@
-/*
-* This Shell is ref School5510587,and separate shell function is ref zzz0072
-*/
 #include "stm32f10x.h"
 #include "RTOSConfig.h"
 

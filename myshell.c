@@ -10,8 +10,6 @@
 #include "systemdef.h"
 #include <ctype.h> 
 
-#include "semi.h"
-
 extern struct task_info task_info_t;
 
 #define MAX_CMDNAME 19
@@ -87,7 +85,6 @@ const hcmd_entry cmd_data[CMD_COUNT] = {
 	[CMD_SYSCALL] = {.cmd = "system", .func = semihost_function, .description = "do Host system call."}
 };
 
-
 /* Structure for environment variables. */
 typedef struct {
 	char name[MAX_ENVNAME + 1];
@@ -96,29 +93,14 @@ typedef struct {
 evar_entry env_var[MAX_ENVCOUNT];
 int env_count = 0;
 
-enum SemihostReasons {
-	// Standard ARM Semihosting Commands:
-	Semihost_SYS_OPEN   = 0x1,
-	Semihost_SYS_CLOSE  = 0x2,
-	Semihost_SYS_WRITE  = 0x5,
-	Semihost_SYS_READ   = 0x6,
-	Semihost_SYS_ISTTY  = 0x9,
-	Semihost_SYS_SEEK   = 0xa,
-	Semihost_SYS_ENSURE = 0xb,
-	Semihost_SYS_FLEN   = 0xc
+union param_t
+{
+    int   pdInt;
+    void *pdPtr;
+    char *pdChrPtr;
 };
 
-static inline int SemihostCall(enum SemihostReasons reason, void *arg)
-{
-	#define AngelSWI 		0xAB
-	#define AngelSWIInsn	"bkpt"
-	int value;
-	asm volatile ("mov r0, %1; mov r1, %2; " AngelSWIInsn " %a3; mov %0, r0"
-			: "=r" (value) // Outputs
-			: "r" (reason), "r" (arg), "i" (AngelSWI) // Inputs
-			: "r0", "r1", "r2", "r3", "ip", "lr", "memory", "cc");
-	return value;
-}
+typedef union param_t param;
 
 void print(char *str){
 	write(mq_open("/tmp/mqueue/out", 0), str,strlen(str)+1);
@@ -166,12 +148,12 @@ void export_envvar(int argc, char *argv[])
 
 char *statetran(int i){
 	switch(i){
-	case 0x0:return	"	TASK_READY";
-	case 0x1:return	"	TASK_WAIT_READ";
-	case 0x2:return	"	TASK_WAIT_WRITE";
-	case 0x3:return	"	TASK_WAIT_INTR";	
-	case 0x4:return	"	TASK_WAIT_TIME";
-	default:return "	Unknow";
+	case 0x0:return	"TASK_READY	";
+	case 0x1:return	"TASK_WAIT_READ";
+	case 0x2:return	"TASK_WAIT_WRITE";
+	case 0x3:return	"TASK_WAIT_INTR";	
+	case 0x4:return	"TASK_WAIT_TIME	";
+	default:return "Unknow	";
 	}
 }
 
@@ -228,9 +210,9 @@ void show_cmd_info(int argc, char* argv[])
 
 	write(fdout, &help_desp, sizeof(help_desp));
 	for (i = 0; i < CMD_COUNT; i++) {
-		write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
-		write(fdout, ": ", 3);
-		write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
+		print(cmd_data[i].cmd);
+		print("	: ");
+		print(cmd_data[i].description);		
 		write(fdout, next_line, 3);
 	}
 }
