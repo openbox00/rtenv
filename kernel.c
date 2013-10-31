@@ -44,15 +44,50 @@ size_t strlen(const char *s)
 	);
 }
 
+/* IRQ handler to handle USART2 interruptss (both transmit and receive
+ * interrupts). */
+void USART2_IRQHandler()
+{
+	/* If this interrupt is for a transmit... */
+	if (USART_GetITStatus(USART2, USART_IT_TXE) != RESET) {
+		/* "give" the serial_tx_wait_sem semaphore to notfiy processes
+		 * that the buffer has a spot free for the next byte.
+		 */
+		//xSemaphoreGiveFromISR(serial_tx_wait_sem, &xHigherPriorityTaskWoken);
+
+		/* Diables the transmit interrupt. */
+		USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+		/* If this interrupt is for a receive... */
+	}
+}
+
+
 void puts(char *s)
 {
 	while (*s) {
 		while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET)
 			/* wait */ ;
-		USART_SendData(USART2, *s);
+		send_byte(*s);
 		s++;
 	}
 }
+
+void send_byte(char *s)
+{
+	/* Wait until the RS232 port can receive another byte (this semaphore
+	 * is "given" by the RS232 port interrupt when the buffer has room for
+	 * another byte.
+	 */
+	//while (!xSemaphoreTake(serial_tx_wait_sem, portMAX_DELAY));
+
+	/* Send the byte and enable the transmit interrupt (it is disabled by
+	 * the interrupt).
+	 */
+	
+	USART_SendData(USART2, s);
+	//USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+}
+
 
 /* 
  * pathserver assumes that all files are FIFOs that were registered
@@ -615,6 +650,12 @@ int main()
 	SysTick_Config(configCPU_CLOCK_HZ / configTICK_RATE_HZ);
 
 	init_rs232();
+
+	/**/
+	enable_rs232_interrupts();
+	enable_rs232();
+	/**/
+
 	__enable_irq();
 
 	tasks[task_count].stack = (void*)init_task(stacks[task_count], &first);
