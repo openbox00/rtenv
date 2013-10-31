@@ -3,16 +3,6 @@
 #include "stm32f10x.h"
 #include "RTOSConfig.h"
 
-/*for print*/
-void send_str(char *str)
-{
-	while (*str != '\0'){
-	USART_SendData(USART2, *str);
-	str++;
-	}
-}
-
-
 void xtoa(int n, char *buffer)
 {
 	char print_buf[9];
@@ -81,26 +71,26 @@ void printf(const char *format, ...)
             if(format[curr_ch] == '%'){
                 if(format[curr_ch + 1] == 's'){
                     str = va_arg(ap, char *);
-					send_str(str);
+					puts(str);
 				}else if(format[curr_ch + 1] == 'd'){
 		            itoa(va_arg(ap, int), str_num);
-					send_str(str_num);
+					puts(str_num);
 				}else if(format[curr_ch + 1] == 'x'){
 					xtoa(va_arg(ap, int), str_num);
-					send_str(str_num);
+					puts(str_num);
 				}else if(format[curr_ch + 1] == 'c'){
 					/* char are converted to int then pushed on the stack */
 					out_ch[0] =(char) va_arg(ap, int);
 					out_ch[1] = '\0';					
-					send_str(out_ch); 
+					puts(out_ch); 
 				}else if(format[curr_ch + 1] == '%'){
-					send_str(percentage); 
+					puts(percentage); 
 				} 				
 				curr_ch++;
             }
 			else{
                 out_ch[0] = format[curr_ch];
-				send_str(&out_ch);
+				puts(&out_ch);
             }
             curr_ch++;
         }
